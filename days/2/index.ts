@@ -7,20 +7,20 @@ type ResultStrategy = "X" | "Y" | "Z";
 /**
  * Potential result of a round
  */
-enum RoundResult {
+enum Result {
   Loose = -1,
   Draw = 0,
   Win = 1
 }
 
 /**
- * Point Per Move
+ * Move with Point value
  * Point per played move:
  * - Rock: 1 point
  * - Paper: 2 points
  * - Scissors: 3 points
  */
-enum MoveAsPoint {
+enum Move {
   Rock = 1,
   Paper = 2,
   Scissor = 3
@@ -35,64 +35,64 @@ enum MoveAsPoint {
  * - Scissors > Paper
  * - Paper > Rock
  */
-const resultForRound: Record<MoveAsPoint, Record<MoveAsPoint, RoundResult>> = {
-  [MoveAsPoint.Rock]: {
-    [MoveAsPoint.Rock]: RoundResult.Draw,
-    [MoveAsPoint.Scissor]: RoundResult.Win,
-    [MoveAsPoint.Paper]: RoundResult.Loose
+const resultForRound: Record<Move, Record<Move, Result>> = {
+  [Move.Rock]: {
+    [Move.Rock]: Result.Draw,
+    [Move.Scissor]: Result.Win,
+    [Move.Paper]: Result.Loose
   },
-  [MoveAsPoint.Scissor]: {
-    [MoveAsPoint.Rock]: RoundResult.Loose,
-    [MoveAsPoint.Scissor]: RoundResult.Draw,
-    [MoveAsPoint.Paper]: RoundResult.Win
+  [Move.Scissor]: {
+    [Move.Rock]: Result.Loose,
+    [Move.Scissor]: Result.Draw,
+    [Move.Paper]: Result.Win
   },
-  [MoveAsPoint.Paper]: {
-    [MoveAsPoint.Rock]: RoundResult.Win,
-    [MoveAsPoint.Scissor]: RoundResult.Loose,
-    [MoveAsPoint.Paper]: RoundResult.Draw
+  [Move.Paper]: {
+    [Move.Rock]: Result.Win,
+    [Move.Scissor]: Result.Loose,
+    [Move.Paper]: Result.Draw
   }
 };
 
 /**
  * Give the move you should play against the opponent to match the strategy guide
  */
-const moveForStrategyResult: Record<MoveAsPoint, Record<RoundResult, MoveAsPoint>> = {
-  [MoveAsPoint.Rock]: {
-    [RoundResult.Draw]: MoveAsPoint.Rock,
-    [RoundResult.Win]: MoveAsPoint.Paper,
-    [RoundResult.Loose]: MoveAsPoint.Scissor
+const moveForStrategy: Record<Move, Record<Result, Move>> = {
+  [Move.Rock]: {
+    [Result.Draw]: Move.Rock,
+    [Result.Win]: Move.Paper,
+    [Result.Loose]: Move.Scissor
   },
-  [MoveAsPoint.Scissor]: {
-    [ RoundResult.Loose]: MoveAsPoint.Paper,
-    [RoundResult.Draw]: MoveAsPoint.Scissor ,
-    [RoundResult.Win]: MoveAsPoint.Rock
+  [Move.Scissor]: {
+    [ Result.Loose]: Move.Paper,
+    [Result.Draw]: Move.Scissor ,
+    [Result.Win]: Move.Rock
   },
-  [MoveAsPoint.Paper]: {
-    [RoundResult.Win]: MoveAsPoint.Scissor,
-    [RoundResult.Loose]: MoveAsPoint.Rock,
-    [RoundResult.Draw]: MoveAsPoint.Paper
+  [Move.Paper]: {
+    [Result.Win]: Move.Scissor,
+    [Result.Loose]: Move.Rock,
+    [Result.Draw]: Move.Paper
   }
 }
 
 /**
  * Points obtained by round result
  */
-const pointForRoundResult: Record<RoundResult, number> = {
-  [RoundResult.Win]: 6,
-  [RoundResult.Draw]: 3,
-  [RoundResult.Loose]: 0
+const pointsByResult: Record<Result, number> = {
+  [Result.Win]: 6,
+  [Result.Draw]: 3,
+  [Result.Loose]: 0
 };
 
-const opponentMoveMap: Record<OpponentMove, MoveAsPoint> = {
-  A: MoveAsPoint.Rock,
-  B: MoveAsPoint.Paper,
-  C: MoveAsPoint.Scissor
+const opponentMoveMap: Record<OpponentMove, Move> = {
+  A: Move.Rock,
+  B: Move.Paper,
+  C: Move.Scissor
 };
 
-const resultStrategyMap: Record<ResultStrategy, RoundResult> = {
-  X: RoundResult.Loose,
-  Y: RoundResult.Draw,
-  Z: RoundResult.Win
+const resultStrategyMap: Record<ResultStrategy, Result> = {
+  X: Result.Loose,
+  Y: Result.Draw,
+  Z: Result.Win
 };
 
 /*
@@ -113,15 +113,14 @@ function fileToArrayOfRound(file: Uint8Array): [OpponentMove, ResultStrategy][] 
 
 
 function getScoreFor(rounds: [OpponentMove, ResultStrategy][]): number {
-  return rounds.reduce<number>((sum, [opponentMove, strategyInput]) => {
-    const opponentMovePoints = opponentMoveMap[opponentMove];
-    const strategy = resultStrategyMap[strategyInput];
-    const myMovePoints = moveForStrategyResult[opponentMovePoints][strategy];
+  return rounds.reduce<number>((sum, [opponentMoveInput, strategyInput]) => {
+    const opponentMove = opponentMoveMap[opponentMoveInput];
+    const recommendedStrategy = resultStrategyMap[strategyInput];
+    const myMove = moveForStrategy[opponentMove][recommendedStrategy];
+    const myResultForRound = resultForRound[myMove][opponentMove];
+    const myPointForRound = pointsByResult[myResultForRound];
 
-    const myResultForRound = resultForRound[myMovePoints][opponentMovePoints];
-    const myPointForRound = pointForRoundResult[myResultForRound];
-
-    return sum + myMovePoints + myPointForRound;
+    return sum + myMove + myPointForRound;
   }, 0)
 }
 
