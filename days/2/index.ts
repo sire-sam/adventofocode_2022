@@ -1,8 +1,8 @@
 const dirPath = new URL(".", import.meta.url).pathname;
 const textDecoder = new TextDecoder("utf-8");
 
-type OpponentMove = "A" | "B" | "C";
-type ResultStrategy = "X" | "Y" | "Z";
+type OpponentMoveInput = "A" | "B" | "C";
+type ResultStrategyInput = "X" | "Y" | "Z";
 
 /**
  * Potential result of a round
@@ -63,8 +63,8 @@ const moveForStrategy: Record<Move, Record<Result, Move>> = {
     [Result.Loose]: Move.Scissor
   },
   [Move.Scissor]: {
-    [ Result.Loose]: Move.Paper,
-    [Result.Draw]: Move.Scissor ,
+    [Result.Loose]: Move.Paper,
+    [Result.Draw]: Move.Scissor,
     [Result.Win]: Move.Rock
   },
   [Move.Paper]: {
@@ -72,7 +72,7 @@ const moveForStrategy: Record<Move, Record<Result, Move>> = {
     [Result.Loose]: Move.Rock,
     [Result.Draw]: Move.Paper
   }
-}
+};
 
 /**
  * Points obtained by round result
@@ -83,45 +83,56 @@ const pointsByResult: Record<Result, number> = {
   [Result.Loose]: 0
 };
 
-const opponentMoveMap: Record<OpponentMove, Move> = {
+/**
+ * Move by OpponentMoveInput
+ */
+const opponentMoveInputToMove: Record<OpponentMoveInput, Move> = {
   A: Move.Rock,
   B: Move.Paper,
   C: Move.Scissor
 };
 
-const resultStrategyMap: Record<ResultStrategy, Result> = {
+/**
+ * Result by ResultStrategyInput
+ * */
+const resultStrategyInputToResult: Record<ResultStrategyInput, Result> = {
   X: Result.Loose,
   Y: Result.Draw,
   Z: Result.Win
 };
 
 /*
-* Get an array array of round on the form of [OpponentMove, ResultStrategy][]
+* Get an array array of round on the form of [Move, Result][], where:
+* - first argument; Move is the opponent move
+* - second argument: Result is the expected result to match strategy guide
 *
 * File structure:
 * - Each round is separate by a new line
 * - Each round contains 3 char: [opponent move][white space][recommended move]
 *
 */
-function fileToArrayOfRound(file: Uint8Array): [OpponentMove, ResultStrategy][] {
+function fileToArrayOfRound(file: Uint8Array): [Move, Result][] {
   return textDecoder.decode(file)
     .split(/\n/)
-    .map((round) => round
-      .split(/\s/) as [OpponentMove, ResultStrategy]
+    .map((round) => {
+        const [opponentMoveInput, resultStrategyInput] = round.split(/\s/);
+        return [
+          opponentMoveInputToMove[opponentMoveInput as OpponentMoveInput],
+          resultStrategyInputToResult[resultStrategyInput as ResultStrategyInput]
+        ];
+      }
     );
 }
 
 
-function getScoreFor(rounds: [OpponentMove, ResultStrategy][]): number {
-  return rounds.reduce<number>((sum, [opponentMoveInput, strategyInput]) => {
-    const opponentMove = opponentMoveMap[opponentMoveInput];
-    const recommendedStrategy = resultStrategyMap[strategyInput];
-    const myMove = moveForStrategy[opponentMove][recommendedStrategy];
+function getScoreFor(rounds: [Move, Result][]): number {
+  return rounds.reduce<number>((sum, [opponentMove, strategy]) => {
+    const myMove = moveForStrategy[opponentMove][strategy];
     const myResultForRound = resultForRound[myMove][opponentMove];
     const myPointForRound = pointsByResult[myResultForRound];
 
     return sum + myMove + myPointForRound;
-  }, 0)
+  }, 0);
 }
 
 const testData = await Deno.readFile(dirPath + "./test.txt");
@@ -132,9 +143,9 @@ const strategyGuideData = await Deno.readFile(dirPath + "./input.txt");
 console.log("--- Test ---");
 const testSuitResult = getScoreFor(fileToArrayOfRound(testData));
 const testSuiteExpected = 12;
-console.assert(testSuitResult === testSuiteExpected, testSuitResult, `should be ${testSuiteExpected}`)
+console.assert(testSuitResult === testSuiteExpected, testSuitResult, `should be ${testSuiteExpected}`);
 
 // Result for strategy
 // --------------------------
 console.log("--- Part 1 ---");
-console.log("Expected score is ", getScoreFor(fileToArrayOfRound(strategyGuideData)));
+console.log("You score is ", getScoreFor(fileToArrayOfRound(strategyGuideData)));
