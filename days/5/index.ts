@@ -4,8 +4,10 @@ const dirPath = new URL(".", import.meta.url).pathname;
 
 const context = {
   testing: false,
+  isPartTwo: true,
   testValue: {
-    part1: "CMZ"
+    part1: "CMZ",
+    part2: "MCD"
   },
   paths: {
     data: dirPath + "./input.txt",
@@ -20,7 +22,6 @@ const logEntry = (e) => {
   console.log(e);
   return e;
 };
-
 
 context.fileContent()
   .then((r) => {
@@ -51,7 +52,10 @@ context.fileContent()
     // ----------------------------------
     for (const instruction of instructions.split(/\n/)) {
       const [quant, from, to] = instruction.match(/\d+/g).map((e) => parseInt(e));
-      const items = stacks[from].splice(-quant).reverse();
+      const items = stacks[from].splice(-quant);
+      if (!context.isPartTwo) {
+        items.reverse();
+      }
       stacks[to].push(...items);
     }
 
