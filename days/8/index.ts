@@ -4,7 +4,9 @@ import FsFile = Deno.FsFile;
 const dirPath = new URL(".", import.meta.url).pathname;
 
 type Height = number;
+type Score = number;
 type AreaMap = Height[][];
+type ScoreMap = Score[][];
 type Range = [Height?, Height?];
 type Visibility = 1 | 0;
 type VisibilityMap = Visibility[][];
@@ -52,20 +54,30 @@ function visibilityForRow(row: Height[], rowVisibility: Visibility[], range: Ran
   return [...beforePivotVisibility, pivotVisibility, ...afterPivotVisibility];
 }
 
-Deno.open(dirPath + "./test.txt")
+function scenicScoreForCellDirection(start: number, row: Height[], height: Height, count = 0): number {
+  if (row[start] === undefined) {
+    return count;
+  }
+  if (row[start] >= height) {
+    return count + 1;
+  }
+  return scenicScoreForCellDirection(start + 1, row, height, count + 1);
+}
+
+Deno.open(dirPath + "./input.txt")
   .then(inputToMaps)
   .then(function doRows([areaMap, visibilityMap]): [AreaMap, VisibilityMap] {
     return [
       areaMap,
       areaMap.map<Visibility[]>((line, currentIndex) =>
-        visibilityForRow(line, visibilityMap[currentIndex], [])
+        visibilityForRow(Array.from(line), visibilityMap[currentIndex], [])
       )
     ];
   })
-  .then(function doColumns([areaMap, visibilitYOfRows]) {
+  .then(function doColumns([areaMap, visibilitYOfRows]): [AreaMap, VisibilityMap] {
     return [
       areaMap,
-      (function (): AreaMap {
+      (function (): VisibilityMap {
         for (let c = 0; c < areaMap[0].length; c++) {
           const column = [];
           let columnVisibility: Visibility[] = [];
@@ -82,9 +94,41 @@ Deno.open(dirPath + "./test.txt")
       })()
     ];
   })
-  .then(([areaMap, visibilityMapResult]) => {
+  .then(([areaMap, visibilityMapResult]): AreaMap => {
     // Expected Test: 21
-    // Expected Input: 1713
-    console.log("part 1 result is", visibilityMapResult.flat().reduce((a, b) => a + b, 0));
+    console.log("part 1 result is", visibilityMapResult.flat().reduce<number>((a, b) => a + b, 0));
     return areaMap;
+  })
+  .then((areaMap) => {
+    const scenicScoreMap: ScoreMap = [];
+    for (let c = 0; c < areaMap[0].length; c++) {
+      for (let r1 = 0; r1 < areaMap.length; r1++) {
+        scenicScoreMap[r1] = [...areaMap[r1]].fill(-1);
+        scenicScoreMap[r1][c] = -1;
+      }
+    }
+
+    for (let r = 0; r < areaMap.length; r++) {
+      scenicScoreMap[r] = scenicScoreMap[r]
+        .map((_h, i, row) =>
+          scenicScoreForCellDirection(i + 1, areaMap[r], areaMap[r][i])
+          * scenicScoreForCellDirection(row.length - i, [...areaMap[r]].reverse(), areaMap[r][i])
+        );
+    }
+
+    for (let c = 0; c < areaMap[0].length; c++) {
+      const column: Height[] = [];
+      for (let r = 0; r < areaMap.length; r++) {
+        column.push(areaMap[r][c]);
+      }
+      for (let r = 0; r < areaMap.length; r++) {
+        scenicScoreMap[r][c] =
+          scenicScoreMap[r][c]
+          * scenicScoreForCellDirection(r + 1, column, areaMap[r][c])
+          * scenicScoreForCellDirection(column.length - r, [...column].reverse(), areaMap[r][c]);
+      }
+    }
+
+    // Expect Test : 8
+    console.log("part 2 result is", Math.max(...scenicScoreMap.flat()));
   });
